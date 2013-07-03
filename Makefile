@@ -1,5 +1,5 @@
 # Filenames
-OUTPUT_IMAGE=kernel.img
+OUTPUT_IMAGE=sos.img
 
 # Compiler, assembler, linker, linker script
 
@@ -15,18 +15,43 @@ CFLAGS=-c -std=gnu99 -ffreestanding -O2 -Wall -Wextra
 LDFLAGS=-T $(LINKERSCRIPT) -ffreestanding -O2 -nostdlib -lgcc
 ASFLAGS=
 
-all: kernel
+# Directories
 
-kernel: kernel.o boot.o 
-	$(LD) $(LDFLAGS) kernel.o boot.o -o $(OUTPUT_IMAGE)
+SRCDIR=src
+ASDIR=as
+OBJDIR=obj
 
-boot.o: boot.s
-	$(AS) $(ASFLAGS) boot.s -o boot.o
+# Actual filenames for sources (.c and .s with leading path)
+CSRC=$(wildcard $(SRCDIR)/*.c)
+ASSRC=$(wildcard $(ASDIR)/*.s)
 
-kernel.o: kernel.c
+# Guess objects before they exist, so that sos depends on them
+# {src/.c, as/.s) -> obj/.o
+OBJC=$(patsubst $(SRCDIR)/%,$(OBJDIR)/%,$(patsubst %.c,%.o,$(CSRC)))
+OBJAS=$(patsubst $(ASDIR)/%,$(OBJDIR)/%,$(patsubst %.s,%.o,$(ASSRC)))
 
-	$(CC) $(CFLAGS) kernel.c 
+# Concatenate foreguessed object names
+OBJ=$(OBJC) $(OBJAS)
+
+# DEBUG
+#$(info $(OBJ))
+#$(info $(ASSRC))
+
+all: sos
+
+sos: $(OBJ)
+	$(LD) $(LDFLAGS) $^ -o $(OUTPUT_IMAGE)
+
+# Assembly
+
+$(OBJDIR)/%.o: $(ASDIR)/%.s
+	$(AS) $(ASFLAGS) $< -o $@
+
+# C
+
+$(OBJDIR)/%.o: $(SRCDIR)/%.c
+	$(CC) $(CFLAGS) $< -o $@
 
 clean:
-	rm -rf *.o *.img
+	rm -rf $(OBJDIR)/* $(OUTPUT_IMAGE)
 
