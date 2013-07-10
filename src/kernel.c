@@ -3,6 +3,8 @@
 #endif
 #include <stddef.h>
 #include <stdint.h>
+
+#include "func.h"
  
 /* Check if the compiler thinks if we are targeting the wrong operating system. */
 #if defined(__linux__)
@@ -113,5 +115,6 @@ void kernel_main()
 	terminal_initialize();
 	/* Since there is no support for newlines in terminal_putchar yet, \n will
 	   produce some VGA specific character instead. This is normal. */
-	terminal_writestring("Hello, kernel World!\n");
+	//terminal_writestring("Hello, kernel World!\n");
+	terminal_writestring(test());
 }

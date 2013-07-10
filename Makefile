@@ -5,7 +5,8 @@ OUTPUT_IMAGE=sos.img
 
 CC=i586-elf-gcc
 LD=i586-elf-gcc
-AS=i586-elf-as
+#AS=i586-elf-as
+AS=nasm
 
 LINKERSCRIPT=linker/linker.ld
 
@@ -13,22 +14,22 @@ LINKERSCRIPT=linker/linker.ld
 
 CFLAGS=-c -std=gnu99 -ffreestanding -O2 -Wall -Wextra
 LDFLAGS=-T $(LINKERSCRIPT) -ffreestanding -O2 -nostdlib -lgcc
-ASFLAGS=
+ASFLAGS= -felf
 
 # Directories
 
 SRCDIR=src
-ASDIR=as
+ASDIR=asm
 OBJDIR=obj
 
-# Actual filenames for sources (.c and .s with leading path)
+# Actual filenames for sources (.c and .asm with leading path)
 CSRC=$(wildcard $(SRCDIR)/*.c)
-ASSRC=$(wildcard $(ASDIR)/*.s)
+ASSRC=$(wildcard $(ASDIR)/*.asm)
 
 # Guess objects before they exist, so that sos depends on them
-# {src/.c, as/.s) -> obj/.o
+# {src/.c, asm/.asm) -> obj/.o
 OBJC=$(patsubst $(SRCDIR)/%,$(OBJDIR)/%,$(patsubst %.c,%.o,$(CSRC)))
-OBJAS=$(patsubst $(ASDIR)/%,$(OBJDIR)/%,$(patsubst %.s,%.o,$(ASSRC)))
+OBJAS=$(patsubst $(ASDIR)/%,$(OBJDIR)/%,$(patsubst %.asm,%.o,$(ASSRC)))
 
 # Concatenate foreguessed object names
 OBJ=$(OBJC) $(OBJAS)
@@ -44,7 +45,7 @@ sos: $(OBJ)
 
 # Assembly
 
-$(OBJDIR)/%.o: $(ASDIR)/%.s
+$(OBJDIR)/%.o: $(ASDIR)/%.asm
 	$(AS) $(ASFLAGS) $< -o $@
 
 # C
