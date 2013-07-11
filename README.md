@@ -17,7 +17,7 @@ To learn low-level stuff and understand how an operating system deals with the u
 Next steps
 ----------
 
-- Handling input (cursos position, chars on the screen)
+- Handling input (cursor position, chars on the screen)
 - Implementing a simple filesystem
 
 License
