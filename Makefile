@@ -14,7 +14,7 @@ LINKERSCRIPT=linker/linker.ld
 
 CFLAGS=-c -std=gnu99 -ffreestanding -O2 -Wall -Wextra
 LDFLAGS=-T $(LINKERSCRIPT) -ffreestanding -O2 -nostdlib -lgcc
-ASFLAGS= -felf
+ASFLAGS= -felf -w+orphan-labels
 
 # Directories
 
