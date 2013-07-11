@@ -9,6 +9,7 @@ MAGIC:       equ  0x1BADB002             ; 'magic number' lets bootloader find t
 CHECKSUM:    equ -(MAGIC + FLAGS)        ; checksum of above, to prove we are multiboot
 
 extern term_clear
+extern term_set_cursor
 
 global _start
 
@@ -39,6 +40,7 @@ _start:
   ;call kernel_main
 
   call term_clear
+  call term_set_cursor
 
   ; Disable interrupts
   cli
