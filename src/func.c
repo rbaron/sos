@@ -1,3 +1,9 @@
+/*
+
+  Define here functions to be called from assembly.
+
+*/
+
 #if !defined(__cplusplus)
 #include <stdbool.h> /* C doesn't have booleans by default. */
 #endif
