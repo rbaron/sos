@@ -5,6 +5,7 @@
 
 [bits 32]
 
+; eqn defines a value, not an address
 TERM_WIDTH: equ 80 
 TERM_HEIGHT: equ 25
 TERM_LENGTH: equ TERM_WIDTH*TERM_HEIGHT
@@ -12,112 +13,146 @@ TERM_LENGTH: equ TERM_WIDTH*TERM_HEIGHT
 
 global term_clear
 global term_set_cursor
-global term_write
+global term_put_char
+global term_put_string
 
 
 section .data
 
-term_header_bg_color: db 0x2
-term_header_fg_color: db 0x1
-term_bg_color: db 0x5
-term_fg_color: db 0x3
+; db defines an address, not a value
+term_header_bg_color: db 0x8
+term_header_fg_color: db 0x7
+term_bg_color: db 0x0
+term_fg_color: db 0x2
 
-term_header_text: db 's','o','s'
+term_row: db 0x0
+term_col: db 0x0
+
+term_header_title: db '-[ sos ]-', 0
+; Guess length of half upper bar
+term_header_bar: times (TERM_WIDTH-($-term_header_title-1))/2 db '%'
+db 0
+term_empty_body: times (TERM_WIDTH*(TERM_HEIGHT-1)) db ' '
+db 0
 
 section .bss
 
 section .text
 
-term_clear:
+; term_put_char: 
+;   Writes a ASCII encoded char to a given location
+;   @args:
+;     bh: row
+;     bl: col
+;     dh: color (bg:4|fg:4)
+;     dl: char
+term_put_char:
   pushad
   
-  mov edx, 0
-  mov ebx, 0
-  mov eax, 0xB8000
+  ; dx can be overwritten by a call to mul
+  push dx
 
-  mov ebx, [term_header_bg_color]
-  mov ecx, [term_header_fg_color]
+  ; Write to mem location
+  ; Pos = 0xB8000 + 2*(row*2TERM_WIDTH + col)
+  ; row
+  mov eax, ebx
+  and eax, 0xFF00
+  shr eax, 8
+  mov ecx, TERM_WIDTH
+  mul ecx
+  ; col
+  mov ecx, ebx
+  and ecx, 0xFF
+  add eax, ecx
+  imul eax, 2
+  add eax, 0xB8000
 
-  ; Set color and space char for cleanup
-  shl ecx, 4
-  or ebx, ecx
-  shl ebx, 8
-  ; % char  (ASCII 0x25)
-  or ebx, 0x25
+  pop dx
+  mov [eax], dx
 
-  header_left:
+  popad
+  
+  ret
 
-    mov [eax+2*edx], ebx
-    inc edx 
-    cmp edx, TERM_WIDTH/2-4
-    jl header_left
+; term_put_string:
+;   Outputs a NULL-ended string
+;   @args;
+;      ecx: string addr
+term_put_string:
+  pushad
 
-  header_middle:
-    and ebx, 0xFFFFFF00
-    ; ASCII [
-    or ebx, 0x5b
-    mov [eax+2*edx], ebx
-    inc edx 
+  ; Initial coords
+  mov bh, [term_row]
+  mov bl, [term_col]
 
-    and ebx, 0xFFFFFF00
-    ; ASCII s
-    or ebx, 0x73
-    mov [eax+2*edx], ebx
-    inc edx 
+  ; Copy color to dh
+  mov dh, [term_bg_color]
+  shl dh, 4
+  or dh, [term_fg_color]
 
-    and ebx, 0xFFFFFF00
-    ; ASCII o
-    or ebx, 0x6f
-    mov [eax+2*edx], ebx
-    inc edx 
-
-    and ebx, 0xFFFFFF00
-    ; ASCII s
-    or ebx, 0x73
-    mov [eax+2*edx], ebx
-    inc edx 
-
-    and ebx, 0xFFFFFF00
-    ; ASCII ]
-    or ebx, 0x5d
-    mov [eax+2*edx], ebx
-    inc edx 
-
-  and ebx, 0xFFFFFF00
-  ; ASCII %
-  or ebx, 0x25
-  mov [eax+2*edx], ebx
-  inc edx 
-
-  header_bottom:
-
-    mov [eax+2*edx], ebx
-    inc edx 
-    cmp edx, TERM_WIDTH
-    jl header_bottom
+  .loop:
+    cmp byte [ecx], byte 0x0
+    je .ret
     
+    ; Put a char
+    mov dl, [ecx]
+    call term_put_char
+    inc ecx
+    inc bl
 
-  mov ebx, [term_bg_color]
-  mov ecx, [term_fg_color]
+    ; New line?
+    cmp bl, TERM_WIDTH
+    je .new_line
+    jmp .loop
 
-  ; Set color and space char for cleanup
-  shl ecx, 4
-  or ebx, ecx
-  shl ebx, 8
-  ; Space char (ASCII 0x20)
-  or ebx, 0x20
+  .ret:
 
-  body:
+  ; Re-set row and col
+  mov [term_row], bh
+  mov [term_col], bl
+  popad
+  ret
 
-    mov [eax+2*edx], ebx
-    inc edx 
-    cmp edx, TERM_LENGTH
-    jl body 
+  .new_line:
+  mov bl, 0x0
+  inc bh
+  jmp .loop
 
-  ; Set cursor to 1,0
-  mov bh, 0x1
-  mov bl, 0x1
-  jmp term_set_cursor
+term_clear:
+  pushad 
+
+  ; Reset row, col
+  mov [term_row], byte 0
+  mov [term_col], byte 0
+
+  ; Backup old color
+  mov bh, [term_bg_color]
+  mov bl, [term_fg_color]
+
+  mov ch, [term_header_bg_color]
+  mov cl, [term_header_fg_color]
+  mov [term_bg_color], ch
+  mov [term_fg_color], cl
+
+  mov ecx, term_header_bar 
+  call term_put_string
+  mov ecx, term_header_title
+  call term_put_string
+  mov ecx, term_header_bar 
+  call term_put_string
+
+  ; Restore default term colors
+  mov [term_bg_color], bh
+  mov [term_fg_color], bl
+
+  mov ecx, term_empty_body
+  call term_put_string
+
+  ; Set initial typing position
+  mov [term_row], byte 0x1
+  mov [term_col], byte 0x1
+
+  call term_refresh_cursor
 
   popad
   ret
@@ -136,13 +171,12 @@ term_clear:
 ;
 ;    Implementation modified from: http://wiki.osdev.org/Text_Mode_Cursor
 
-term_set_cursor:
+term_refresh_cursor:
 
-  ; Test
-  ;mov bh, TERM_WIDTH-1
-  ;mov bl, 2
+  pusha
 
-  ;pushad
+  mov bh, [term_col]
+  mov bl, [term_row]
 
   ; Set ax to ( col | row )
   mov ax, bx
@@ -183,5 +217,5 @@ term_set_cursor:
   mov dx,0x3d5  
   out dx,al    
 
-  ;popad
+  popa
   ret
