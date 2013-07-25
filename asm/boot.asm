@@ -49,24 +49,17 @@ _start:
   ; Point ESP to stack_top (grows backwars)
   mov esp, stack_top
 
-  ; Write a string
-  ;mov ecx, header_title
-  ;call term_put_string
-
   call term_clear
 
   ;call keyboard_init
 
   call interrupt_init
   
-  ;sti
-
   ; Disable interrupts
-  ;cli
+  cli
 
   ;mov eax, 0xabcdef
-  ;int 0x1
-  ;int 2
+  int 31
 
 .hang:
   ;hlt

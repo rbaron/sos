@@ -7,11 +7,15 @@ global interrupt_init
 section .data
 
 interrupt_callback_string:
-  db 'hello, interrupt!'
+  db 'hello, interrupt!', 0
 
+; Allocate mem for interrupt decriptor table
+; The content at this address will be set to the
+; IDTR register via a call to 'lidt' instruction
 interrupt_idt: 
   times 256*8 db 0x0
 
+; Pointer argument for lidt
 interrupt_idtr: 
   dw 255
   dd interrupt_idt
@@ -19,7 +23,10 @@ interrupt_idtr:
 section .text
 
 interrupt_init:
+  popad
   call interrupt_setup_idt
+  pushad
+  ret
 
 interrupt_callback:
   pushad
@@ -29,71 +36,44 @@ interrupt_callback:
   iret
    
 interrupt_setup_idt:
-  cli
-  mov eax,interrupt_callback
-  mov [interrupt_idt],ax
-  mov word [interrupt_idt+2],0x0008
-  mov word [interrupt_idt+4],0x8E00
-  shr eax,16
-  mov [interrupt_idt+6],ax
+  pushad 
 
   mov eax,interrupt_callback
-  mov [interrupt_idt+8],ax
-  mov word [interrupt_idt+2+8],0x0008
-  mov word [interrupt_idt+4+8],0x8E00
-  shr eax,16
-  mov [interrupt_idt+6+8],ax
-
-  mov eax,interrupt_callback
-  mov [interrupt_idt+16],ax
-  mov word [interrupt_idt+2+16],0x0008
-  mov word [interrupt_idt+4+16],0x8E00
-  shr eax,16
-  mov [interrupt_idt+6+16],ax
-
-  mov eax,interrupt_callback
-  mov [interrupt_idt+32*8],ax
-  mov word [interrupt_idt+32*8+2],0x0008
-  mov word [interrupt_idt+32*8+4],0x8E00
-  shr eax,16
-  mov [interrupt_idt+32*8+6],ax
+  mov bl, 0x1F
+  call interrupt_set_gate
 
   lidt [interrupt_idtr]
 
-  ;int 0
-  ;int 1
-  ;int 2
-  ;int 0
+  popad
+  ret
 
-  ;sti
-  ;int 0x0
-  ;int 0
+; interrupt_set_gate:
+;   writes an entry to the IDT vector
+;   @args:
+;     eax: callback address (ISR)
+;     bl: interrupt number 
+interrupt_set_gate:
+  pushad
 
-;int_handler:
-;    ;mov ax, LINEAR_DATA_SELECTOR
-;    mov ax, 0x0
-;    ;mov gs, ax
-;    mov dword [gs:0xB8000],') : '
-;    hlt
-;    ;iret
-; 
-; idt:
-;    resd 50*2
-; 
-; idtr:
-;    dw (50*8)-1
-;    ;dd LINEAR_ADDRESS(idt)
-;    dd idt
-; 
-; test1:
-;    lidt [idtr]
-;    mov eax,int_handler
-;    ;mov eax, keyboard_test
-;    mov [idt+49*8],ax
-;    ;mov word [idt+49*8+2],CODE_SELECTOR
-;    mov word [idt+49*8+2],0x0000
-;    mov word [idt+49*8+4],0x8E00
-;    shr eax,16
-;    mov [idt+49*8+6],ax
-;    int 49
+  push eax
 
+  ; Calculate entry address at IDT (base addr = interrupt_idt + 8*bl)
+  and ebx, 0xFF
+  mov eax, ebx
+  mov cl, 8
+  mul cl
+  
+  ; Base address
+  mov ebx, eax
+  add ebx, interrupt_idt
+
+  ; Callback
+  pop eax
+  mov [ebx], ax ;Lower callback addr
+  mov word [ebx+2], 0x0008
+  mov word [ebx+4], 0x8E00
+  shr eax, 16
+  mov [ebx+6], ax ;Higher callback addr
+
+  popad
+  ret
