@@ -28,7 +28,7 @@ term_fg_color: db 0x2
 term_row: db 0x0
 term_col: db 0x0
 
-term_header_title: db '-[ sos ]-', 0
+term_header_title: db '-[ sos ]-%', 0
 ; Guess length of half upper bar
 term_header_bar: times (TERM_WIDTH-($-term_header_title-1))/2 db '%'
 db 0
@@ -110,6 +110,9 @@ term_put_string:
   ; Re-set row and col
   mov [term_row], bh
   mov [term_col], bl
+
+  call term_refresh_cursor
+
   popad
   ret
 
@@ -157,7 +160,7 @@ term_clear:
   popad
   ret
 
-; term_set_cursor:
+; term_refresh_cursor:
 ;    bl: row position
 ;    bh: col position
 ;       ( bx : col | row ) 
@@ -168,8 +171,6 @@ term_clear:
 ;
 ;    The movement is done in two parts. First, write the least significant byte at 0x3d5 (after writing
 ;    0xff to 0x3d4) and then the most significant (after writing 0x0e to 0x3d4)
-;
-;    Implementation modified from: http://wiki.osdev.org/Text_Mode_Cursor
 
 term_refresh_cursor:
 

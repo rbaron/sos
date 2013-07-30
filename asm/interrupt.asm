@@ -34,13 +34,34 @@ interrupt_callback:
   call term_put_string
   popad
   iret
+
+interrupt_dummy_callback:
+  iret
    
 interrupt_setup_idt:
   pushad 
 
-  mov eax,interrupt_callback
-  mov bl, 0x1F
+  ; Setup 0x1F dummy interrupts
+  mov cl, 0x0
+  .loop:
+    ;mov eax, interrupt_callback
+    mov eax, interrupt_dummy_callback
+    mov bl, cl
+    call interrupt_set_gate
+    inc cl
+    cmp cl, 0x20
+    jne .loop
+
+  ; Keyboard
+  mov eax, interrupt_callback
+  mov bl, 21
   call interrupt_set_gate
+
+  ; Test
+  mov eax, interrupt_callback
+  mov bl, 0x1e ;30
+  call interrupt_set_gate
+   
 
   lidt [interrupt_idtr]
 

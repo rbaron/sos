@@ -58,11 +58,11 @@ _start:
   ; Disable interrupts
   cli
 
-  ;mov eax, 0xabcdef
-  int 31
+  ; Test interrupt
+  int 30
 
 .hang:
-  ;hlt
+  hlt
 
   ; If, for whatever reason, we reach here, loop
   jmp .hang
