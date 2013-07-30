@@ -18,7 +18,7 @@ Next steps
 ----------
 
 - Implement keyboard interrupts
-- Implementing a simple filesystem
+- Implement a simple filesystem
 
 License
 -------
